@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Word Counter</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 800px;
+            width: 100%;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1rem;
+        }
+
+        .upload-section {
+            margin-bottom: 30px;
+        }
+
+        .file-upload {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-input {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .file-label {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-height: 150px;
+        }
+
+        .file-label:hover {
+            border-color: #764ba2;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2));
+            transform: translateY(-2px);
+        }
+
+        .file-label.dragover {
+            border-color: #764ba2;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.3), rgba(118, 75, 162, 0.3));
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .upload-text {
+            font-size: 1.2rem;
+            color: #333;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .upload-hint {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .file-info {
+            background: rgba(102, 126, 234, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            display: none;
+        }
+
+        .file-info.show {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .analyze-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .analyze-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .analyze-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            margin: 20px 0;
+        }
+
+        .loading.show {
+            display: flex;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(102, 126, 234, 0.2);
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .results {
+            display: none;
+            background: linear-gradient(135deg, rgba(76, 175, 80, 0.1), rgba(139, 195, 74, 0.1));
+            border: 2px solid rgba(76, 175, 80, 0.3);
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 20px;
+        }
+
+        .results.show {
+            display: block;
+            animation: slideIn 0.5s ease;
+        }
+
+        .results h3 {
+            color: #2e7d32;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            text-align: center;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .per-page-section {
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .per-page-section.show {
+            display: block;
+            animation: slideIn 0.5s ease;
+        }
+
+        .per-page-header {
+            color: #333;
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .page-averages {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .avg-card {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .avg-number {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .avg-label {
+            font-size: 0.85rem;
+            color: #666;
+            margin-top: 3px;
+        }
+
+        .pages-container {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            border-radius: 10px;
+            padding: 10px;
+        }
+
+        .page-item {
+            background: white;
+            margin-bottom: 8px;
+            padding: 12px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            box-shadow: 0 1px 5px rgba(0, 0, 0, 0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .page-number {
+            font-weight: bold;
+            color: #333;
+            font-size: 1rem;
+        }
+
+        .page-stats {
+            display: flex;
+            gap: 15px;
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .page-method {
+            font-size: 0.8rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea;
+        }
+
+        .text-preview {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            border-left: 4px solid #667eea;
+        }
+
+        .text-preview h4 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .text-preview p {
+            color: #666;
+            line-height: 1.6;
+            font-style: italic;
+        }
+
+        .error {
+            display: none;
+            background: linear-gradient(135deg, rgba(244, 67, 54, 0.1), rgba(233, 30, 99, 0.1));
+            border: 2px solid rgba(244, 67, 54, 0.3);
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+            color: #c62828;
+            text-align: center;
+        }
+
+        .error.show {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+                max-width: 95%;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .page-averages {
+                grid-template-columns: 1fr;
+            }
+
+            .page-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+
+            .page-stats {
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📄 PDF Word Counter</h1>
+            <p>Upload your PDF or image documents to get instant word count and per-page statistics</p>
+        </div>
+
+        <div class="upload-section">
+            <div class="file-upload">
+                <input type="file" id="fileInput" class="file-input" accept=".pdf,.png,.jpg,.jpeg,.tiff,.bmp">
+                <label for="fileInput" class="file-label" id="fileLabel">
+                    <div class="upload-icon">📁</div>
+                    <div class="upload-text">Drop your file here or click to browse</div>
+                    <div class="upload-hint">Supports PDF, PNG, JPG, JPEG, TIFF, BMP (Max 25MB)</div>
+                </label>
+            </div>
+            
+            <div class="file-info" id="fileInfo">
+                <strong>Selected file:</strong> <span id="fileName"></span><br>
+                <strong>Size:</strong> <span id="fileSize"></span><br>
+                <strong>Type:</strong> <span id="fileType"></span>
+            </div>
+        </div>
+
+        <button class="analyze-btn" id="analyzeBtn" disabled>
+            <span id="btnText">Select a file to analyze</span>
+        </button>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <span>Analyzing your document... This may take a moment for large files.</span>
+        </div>
+
+        <div class="results" id="results">
+            <h3>📊 Analysis Results</h3>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <span class="stat-number" id="wordCount">0</span>
+                    <div class="stat-label">Total Words</div>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-number" id="uniqueWords">0</span>
+                    <div class="stat-label">Unique Words</div>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-number" id="charCount">0</span>
+                    <div class="stat-label">Characters</div>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-number" id="lineCount">0</span>
+                    <div class="stat-label">Lines</div>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-number" id="pageCount">0</span>
+                    <div class="stat-label">Pages</div>
+                </div>
+            </div>
+
+            <!-- Per-Page Statistics Section -->
+            <div class="per-page-section" id="perPageSection">
+                <div class="per-page-header">📑 Per-Page Analysis</div>
+                
+                <div class="page-averages">
+                    <div class="avg-card">
+                        <div class="avg-number" id="avgWordsPerPage">0</div>
+                        <div class="avg-label">Avg Words/Page</div>
+                    </div>
+                    <div class="avg-card">
+                        <div class="avg-number" id="avgCharsPerPage">0</div>
+                        <div class="avg-label">Avg Chars/Page</div>
+                    </div>
+                </div>
+
+                <div class="pages-container" id="pagesContainer">
+                    <!-- Page breakdown will be inserted here -->
+                </div>
+            </div>
+            
+            <div class="text-preview">
+                <h4>📝 Text Preview</h4>
+                <p id="textPreview">Preview will appear here...</p>
+            </div>
+        </div>
+
+        <div class="error" id="error">
+            <strong>❌ Error:</strong> <span id="errorMessage"></span>
+        </div>
+
+        <div class="footer">
+            <p>Powered by OCR technology • Enhanced with per-page analysis</p>
+        </div>
+    </div>
+
+    <script>
+        // API Configuration
+        const API_BASE_URL = 'https://ocr-trial-project-production.up.railway.app';
+        
+        // DOM Elements
+        const fileInput = document.getElementById('fileInput');
+        const fileLabel = document.getElementById('fileLabel');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const fileType = document.getElementById('fileType');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const btnText = document.getElementById('btnText');
+        const loading = document.getElementById('loading');
+        const results = document.getElementById('results');
+        const error = document.getElementById('error');
+        const errorMessage = document.getElementById('errorMessage');
+
+        // Result elements
+        const wordCount = document.getElementById('wordCount');
+        const uniqueWords = document.getElementById('uniqueWords');
+        const charCount = document.getElementById('charCount');
+        const lineCount = document.getElementById('lineCount');
+        const pageCount = document.getElementById('pageCount');
+        const textPreview = document.getElementById('textPreview');
+
+        // Per-page elements
+        const perPageSection = document.getElementById('perPageSection');
+        const avgWordsPerPage = document.getElementById('avgWordsPerPage');
+        const avgCharsPerPage = document.getElementById('avgCharsPerPage');
+        const pagesContainer = document.getElementById('pagesContainer');
+
+        let selectedFile = null;
+
+        // File input change handler
+        fileInput.addEventListener('change', handleFileSelect);
+
+        // Drag and drop handlers
+        fileLabel.addEventListener('dragover', handleDragOver);
+        fileLabel.addEventListener('dragleave', handleDragLeave);
+        fileLabel.addEventListener('drop', handleDrop);
+
+        // Analyze button handler
+        analyzeBtn.addEventListener('click', analyzeDocument);
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                selectedFile = file;
+                displayFileInfo(file);
+                enableAnalyzeButton();
+            }
+        }
+
+        function handleDragOver(event) {
+            event.preventDefault();
+            fileLabel.classList.add('dragover');
+        }
+
+        function handleDragLeave(event) {
+            event.preventDefault();
+            fileLabel.classList.remove('dragover');
+        }
+
+        function handleDrop(event) {
+            event.preventDefault();
+            fileLabel.classList.remove('dragover');
+            
+            const files = event.dataTransfer.files;
+            if (files.length > 0) {
+                const file = files[0];
+                selectedFile = file;
+                fileInput.files = files; // Update the input element
+                displayFileInfo(file);
+                enableAnalyzeButton();
+            }
+        }
+
+        function displayFileInfo(file) {
+            fileName.textContent = file.name;
+            fileSize.textContent = formatFileSize(file.size);
+            fileType.textContent = file.type || 'Unknown';
+            fileInfo.classList.add('show');
+        }
+
+        function enableAnalyzeButton() {
+            analyzeBtn.disabled = false;
+            btnText.textContent = 'Analyze Document';
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        async function analyzeDocument() {
+            if (!selectedFile) return;
+
+            // Hide previous results/errors
+            hideResults();
+            hideError();
+            
+            // Show loading
+            showLoading();
+            disableAnalyzeButton();
+
+            try {
+                const formData = new FormData();
+                formData.append('file', selectedFile);
+
+                const response = await fetch(`${API_BASE_URL}/count-words`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                displayResults(data);
+
+            } catch (err) {
+                console.error('Error:', err);
+                showError(err.message || 'Failed to analyze document. Please try again.');
+            } finally {
+                hideLoading();
+                enableAnalyzeButton();
+            }
+        }
+
+        function showLoading() {
+            loading.classList.add('show');
+        }
+
+        function hideLoading() {
+            loading.classList.remove('show');
+        }
+
+        function disableAnalyzeButton() {
+            analyzeBtn.disabled = true;
+            btnText.textContent = 'Analyzing...';
+        }
+
+        function enableAnalyzeButton() {
+            analyzeBtn.disabled = false;
+            btnText.textContent = 'Analyze Document';
+        }
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            error.classList.add('show');
+        }
+
+        function hideError() {
+            error.classList.remove('show');
+        }
+
+        function hideResults() {
+            results.classList.remove('show');
+            perPageSection.classList.remove('show');
+        }
+
+        function displayResults(data) {
+            const stats = data.statistics;
+            
+            // Update main statistics with animation
+            animateNumber(wordCount, stats.word_count);
+            animateNumber(uniqueWords, stats.unique_word_count);
+            animateNumber(charCount, stats.character_count);
+            animateNumber(lineCount, stats.line_count);
+            
+            // Update page count
+            const totalPages = stats.per_page_statistics ? stats.per_page_statistics.total_pages : 1;
+            animateNumber(pageCount, totalPages);
+            
+            // Update text preview
+            textPreview.textContent = stats.extracted_text_preview || 'No text preview available';
+            
+            // Display per-page statistics if available
+            if (stats.per_page_statistics) {
+                displayPerPageStats(stats.per_page_statistics);
+            }
+            
+            // Show results
+            results.classList.add('show');
+        }
+
+        function displayPerPageStats(perPageStats) {
+            // Update averages
+            avgWordsPerPage.textContent = perPageStats.average_words_per_page || '0';
+            avgCharsPerPage.textContent = Math.round(perPageStats.average_characters_per_page) || '0';
+            
+            // Clear previous page breakdown
+            pagesContainer.innerHTML = '';
+            
+            // Create page breakdown
+            if (perPageStats.page_breakdown && perPageStats.page_breakdown.length > 0) {
+                perPageStats.page_breakdown.forEach(page => {
+                    const pageItem = document.createElement('div');
+                    pageItem.className = 'page-item';
+                    
+                    pageItem.innerHTML = `
+                        <div class="page-number">Page ${page.page_number}</div>
+                        <div class="page-stats">
+                            <span><strong>${page.word_count.toLocaleString()}</strong> words</span>
+                            <span><strong>${page.character_count.toLocaleString()}</strong> chars</span>
+                        </div>
+                        <div class="page-method">${page.extraction_method === 'ocr' ? 'OCR' : 'Direct Text'}</div>
+                    `;
+                    
+                    pagesContainer.appendChild(pageItem);
+                });
+                
+                // Show per-page section
+                perPageSection.classList.add('show');
+            }
+        }
+
+        function animateNumber(element, targetValue) {
+            const startValue = 0;
+            const duration = 1000; // 1 second
+            const stepTime = 50; // Update every 50ms
+            const steps = duration / stepTime;
+            const stepValue = (targetValue - startValue) / steps;
+            
+            let currentValue = startValue;
+            let step = 0;
+            
+            const timer = setInterval(() => {
+                step++;
+                currentValue += stepValue;
+                
+                if (step >= steps) {
+                    currentValue = targetValue;
+                    clearInterval(timer);
+                }
+                
+                element.textContent = Math.round(currentValue).toLocaleString();
+            }, stepTime);
+        }
+
+        // Test API connection on page load
+        window.addEventListener('load', async () => {
+            try {
+                const response = await fetch(`${API_BASE_URL}/`);
+                if (response.ok) {
+                    console.log('✅ API connection successful');
+                } else {
+                    console.warn('⚠️ API connection failed');
+                }
+            } catch (err) {
+                console.error('❌ API connection error:', err);
+            }
+        });
+    </script>
+</body>
+</html>

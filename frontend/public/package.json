@@ -1,0 +1,15 @@
+{
+  "name": "pdf-word-counter-frontend",
+  "version": "1.0.0",
+  "description": "Frontend for PDF Word Counter API",
+  "scripts": {
+    "start": "npx serve . -p $PORT -s",
+    "build": "echo 'No build step required'"
+  },
+  "dependencies": {
+    "serve": "^14.2.1"
+  },
+  "engines": {
+    "node": "18.x"
+  }
+}
